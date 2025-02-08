@@ -73,27 +73,27 @@ const ProductList = () => {
               </div>
 
             <div className="mt-3 text-center">
-            <h3 className="text-lg font-semibold">{product.itemName}</h3>
-            <p className="text-gray-700 font-medium">₹{product.price}</p>
-            <p className={`text-sm ${product.stockAvailability > 0 ? "text-green-600" : "text-red-500"}`}>
-              {product.stockAvailability > 0 ? `In Stock` : `Out of Stock`}
-            </p>
-            
-            <Dialog>
-            <DialogTrigger asChild className="mt-2">
-              <Button variant="outline" disabled={product.stockAvailability <= 0}  className={product.stockAvailability > 0 ? "text-lightgreen border-lightgreen" : "text-red-500 border-red-500 opacity-50 cursor-not-allowed"}>
-              Add to cart
-            </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>{product.itemName}</DialogTitle>
-                <DialogDescription>
-                  <ProductItemDetails product={product}/>
-                </DialogDescription>
-              </DialogHeader>
-            </DialogContent>
-            </Dialog>
+                  <h3 className="text-lg font-semibold">{product.itemName}</h3>
+                  <p className="text-gray-700 font-medium">₹{product.price}</p>
+                  <p className={`text-sm ${product.stockAvailability > 0 ? "text-green-600" : "text-red-500"}`}>
+                    {product.stockAvailability > 0 ? `In Stock` : `Out of Stock`}
+                  </p>
+                  
+                  <Dialog>
+                  <DialogTrigger asChild className="mt-2">
+                    <Button variant="outline" disabled={product.stockAvailability <= 0}  className={product.stockAvailability > 0 ? "text-lightgreen border-lightgreen" : "text-red-500 border-red-500 opacity-50 cursor-not-allowed"}>
+                    Add to cart
+                  </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>{product.itemName}</DialogTitle>
+                      <DialogDescription>
+                        <ProductItemDetails product={product}/>
+                      </DialogDescription>
+                    </DialogHeader>
+                  </DialogContent>
+                  </Dialog>
 
             </div>
             </div>

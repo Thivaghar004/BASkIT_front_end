@@ -51,7 +51,7 @@ const CategoryList = () => {
               key={category.categoryId}
               className={`relative rounded-lg shadow-md overflow-hidden cursor-pointer transition-transform transform hover:scale-105 bg-green-50 p-2 hover:bg-green-300
                 ${category.categoryId === categoryId ? "border-4 border-green-600" : ""}`} 
-              onClick={() => setCategory(category.categoryId)} 
+              onClick={() => setCategory(category.categoryId === categoryId ? null : category.categoryId)} 
             >
               <div className="relative w-full h-[120px]">
                 <Image
