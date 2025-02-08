@@ -48,6 +48,7 @@ function Header() {
 
   function handleLogout() {
     sessionStorage.removeItem("user")
+    sessionStorage.removeItem("cartId")
     setUser(null)
     window.location.href = "/login"
   }
@@ -66,6 +67,8 @@ function Header() {
         const cartData = response.data
         setCartId(cartData.cartId)
         setCart(cartData)
+
+        sessionStorage.setItem("cartId", cartData.cartId);
 
         if (cartData.listOfItems && cartData.listOfItems.length > 0) {
           setCartItems(cartData.listOfItems)
@@ -88,47 +91,59 @@ function Header() {
     }
   }
 
-  async function updateItemQuantity(listItemId, newQuantity) {
+  async function updateItemQuantity(listItemId, newQuantity, itemId) {
     try {
       if (newQuantity < 1) {
-        await removeItem(listItemId)
-        return
+        await removeItem(listItemId);
+        return;
       }
-
-      const storedCartId = cartId ?? cart?.cartId; // Ensure cartId is not undefined
-      const storedItemId = itemId ?? cartItems.find(i => i.id === listItemId)?.item.itemId
-
+  
+      // ✅ Retrieve cartId from sessionStorage or state
+      let storedCartId = cartId || sessionStorage.getItem("cartId");
+  
+      // ✅ Ensure product is properly defined
+      let storedItemId = itemId ?? null;
+  
+      // 🔥 Debugging logs
+      console.log("🔍 Updating Cart Item:", {
+        listItemId,
+        cartId: storedCartId,
+        itemId: storedItemId,
+        quantity: newQuantity,
+      });
+  
+      // ✅ Ensure both cartId and itemId exist before proceeding
       if (!storedCartId || !storedItemId) {
-        console.error("Cart ID or Item ID is missing:", { storedCartId, storedItemId });
+        console.error("❌ Missing required fields:", { cartId: storedCartId, itemId: storedItemId });
         toast.error("Cart ID or Item ID is missing!");
         return;
       }
-
+  
+      // ✅ Send update request
       const response = await axios.put(`http://localhost:8080/api/list-of-items/${listItemId}`, {
         cartId: storedCartId,
         itemId: storedItemId,
         quantity: newQuantity,
       });
-      console.log("Update Response:", response.data);
-
+  
       if (response.status === 200) {
-        // ✨ HIGHLIGHT: Update cartItems directly
+        // ✅ Update cartItems directly
         setCartItems((prevItems) =>
-          prevItems.map((item) => (item.id === listItemId ? { ...item, quantity: newQuantity } : item)),
-        )
-
-        // ✨ HIGHLIGHT: Recalculate total price
+          prevItems.map((item) => (item.id === listItemId ? { ...item, quantity: newQuantity } : item))
+        );
+  
+        // ✅ Recalculate total price
         setTotalPrice((prevTotal) => {
-          const updatedItem = cartItems.find((item) => item.id === listItemId)
-          const priceDifference = updatedItem.item.price * (newQuantity - updatedItem.quantity)
-          return prevTotal + priceDifference
-        })
-
-        toast.success("Cart updated!")
+          const updatedItem = cartItems.find((item) => item.id === listItemId);
+          const priceDifference = updatedItem.item.price * (newQuantity - updatedItem.quantity);
+          return prevTotal + priceDifference;
+        });
+  
+        toast.success("Cart updated!");
       }
     } catch (error) {
-      console.error("Error updating quantity:", error)
-      toast.error("Failed to update quantity")
+      console.error("❌ Error updating cart:", error);
+      toast.error("Failed to update cart.");
     }
   }
 
@@ -309,7 +324,7 @@ function Header() {
                         <Button
                           variant="outline"
                           size="icon"
-                          onClick={() => updateItemQuantity(cartItem.id, cartItem.quantity - 1, cartItem.item.itemId)}
+                          onClick={() => updateItemQuantity(cartItem.id, cartItem.quantity - 1, cartItem.item?.itemId)}
                         >
                           <Minus className="h-4 w-4" />
                         </Button>
@@ -317,7 +332,7 @@ function Header() {
                         <Button
                           variant="outline"
                           size="icon"
-                          onClick={() => updateItemQuantity(cartItem.id, cartItem.quantity + 1, cartItem.item.itemId)}
+                          onClick={() => updateItemQuantity(cartItem.id, cartItem.quantity + 1, cartItem.item?.itemId)}
                         >
                           <Plus className="h-4 w-4" />
                         </Button>
