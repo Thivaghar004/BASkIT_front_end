@@ -8,6 +8,7 @@ import { CategoryProvider } from "./context/CategoryContext";
 import { icons, Sliders } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { Toaster } from "react-hot-toast"
+import { CartProvider } from "./context/CartContext";
 
 const outfit = Outfit({
   variable: "--font-Outfit",
@@ -32,8 +33,10 @@ export default function RootLayout({ children }) {
       <Toaster position="bottom-right" />
         <LocationProvider>
           <CategoryProvider>
+            <CartProvider>
             {showHeader&&<Header/>}
             {children}
+            </CartProvider>
           </CategoryProvider>
         </LocationProvider>
       </body>

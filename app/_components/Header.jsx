@@ -4,6 +4,7 @@ import { useEffect, useState } from "react"
 import { LayoutGrid, Search, ShoppingBag, MapPin, CircleUserRound, Plus, Minus, Trash2 } from "lucide-react"
 import { useLocation } from "../context/LocationContext"
 import { useCategory } from "../context/CategoryContext"
+import { useCart } from "../context/CartContext";
 import { Button } from "@/components/ui/button"
 import axios from "axios"
 import {
@@ -25,11 +26,7 @@ function Header() {
   const [locations, setLocations] = useState([])
   const [loading, setLoading] = useState({ categories: true, locations: true })
   const [user, setUser] = useState(null)
-  const [cartId, setCartId] = useState(null)
-  const [cart, setCart] = useState([])
-  const [cartCount, setCartCount] = useState(0)
-  const [cartItems, setCartItems] = useState([])
-  const [totalPrice, setTotalPrice] = useState(0)
+  const { cartItems, cartCount, totalPrice, updateItemQuantity, removeItem, fetchCartDetails } = useCart();
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
@@ -42,129 +39,31 @@ function Header() {
       if (userData.locationId) {
         setLocation(userData.locationId)
       }
-      fetchCartDetails(userData.userId)
     }
   }, [setLocation])
+
+  useEffect(() => {
+    const handleStorageChange = () => {
+      const updatedUser = JSON.parse(sessionStorage.getItem("user") || "null");
+      if (updatedUser?.userId !== user?.userId) {
+        setUser(updatedUser);
+        fetchCartDetails(updatedUser.userId); // Fetch cart immediately
+      }
+    };
+
+    window.addEventListener("storage", handleStorageChange);
+    return () => window.removeEventListener("storage", handleStorageChange);
+  }, [user]);
+
+  useEffect(() => {
+    fetchCartDetails(user?.userId);
+  }, [cartItems.length]);
 
   function handleLogout() {
     sessionStorage.removeItem("user")
     sessionStorage.removeItem("cartId")
     setUser(null)
     window.location.href = "/login"
-  }
-
-  // ✨ HIGHLIGHT: Updated useEffect to set cartCount based on cartItems
-  useEffect(() => {
-    setCartCount(cartItems.length)
-  }, [cartItems])
-
-  async function fetchCartDetails(userId) {
-    setIsLoading(true)
-    try {
-      const response = await axios.get(`http://localhost:8080/api/carts/user/${userId}`)
-
-      if (response.status === 200) {
-        const cartData = response.data
-        setCartId(cartData.cartId)
-        setCart(cartData)
-
-        sessionStorage.setItem("cartId", cartData.cartId);
-
-        if (cartData.listOfItems && cartData.listOfItems.length > 0) {
-          setCartItems(cartData.listOfItems)
-          // ✨ HIGHLIGHT: Removed setCartCount here as it's now handled by the useEffect
-          const total = cartData.listOfItems.reduce((sum, item) => {
-            return sum + item.item.price * item.quantity
-          }, 0)
-          setTotalPrice(total)
-        } else {
-          setCartItems([])
-          // ✨ HIGHLIGHT: Removed setCartCount(0) here as it's now handled by the useEffect
-          setTotalPrice(0)
-        }
-      }
-    } catch (error) {
-      console.error("Error fetching cart:", error)
-      toast.error("Failed to fetch cart items")
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
-  async function updateItemQuantity(listItemId, newQuantity, itemId) {
-    try {
-      if (newQuantity < 1) {
-        await removeItem(listItemId);
-        return;
-      }
-  
-      // ✅ Retrieve cartId from sessionStorage or state
-      let storedCartId = cartId || sessionStorage.getItem("cartId");
-  
-      // ✅ Ensure product is properly defined
-      let storedItemId = itemId ?? null;
-  
-      // 🔥 Debugging logs
-      console.log("🔍 Updating Cart Item:", {
-        listItemId,
-        cartId: storedCartId,
-        itemId: storedItemId,
-        quantity: newQuantity,
-      });
-  
-      // ✅ Ensure both cartId and itemId exist before proceeding
-      if (!storedCartId || !storedItemId) {
-        console.error("❌ Missing required fields:", { cartId: storedCartId, itemId: storedItemId });
-        toast.error("Cart ID or Item ID is missing!");
-        return;
-      }
-  
-      // ✅ Send update request
-      const response = await axios.put(`http://localhost:8080/api/list-of-items/${listItemId}`, {
-        cartId: storedCartId,
-        itemId: storedItemId,
-        quantity: newQuantity,
-      });
-  
-      if (response.status === 200) {
-        // ✅ Update cartItems directly
-        setCartItems((prevItems) =>
-          prevItems.map((item) => (item.id === listItemId ? { ...item, quantity: newQuantity } : item))
-        );
-  
-        // ✅ Recalculate total price
-        setTotalPrice((prevTotal) => {
-          const updatedItem = cartItems.find((item) => item.id === listItemId);
-          const priceDifference = updatedItem.item.price * (newQuantity - updatedItem.quantity);
-          return prevTotal + priceDifference;
-        });
-  
-        toast.success("Cart updated!");
-      }
-    } catch (error) {
-      console.error("❌ Error updating cart:", error);
-      toast.error("Failed to update cart.");
-    }
-  }
-
-  async function removeItem(listItemId) {
-    try {
-      await axios.delete(`http://localhost:8080/api/list-of-items/${listItemId}`)
-
-      // ✨ HIGHLIGHT: Update cartItems directly
-      setCartItems((prevItems) => prevItems.filter((item) => item.id !== listItemId))
-
-      // ✨ HIGHLIGHT: Recalculate total price
-      setTotalPrice((prevTotal) => {
-        const removedItem = cartItems.find((item) => item.id === listItemId)
-        return prevTotal - removedItem.item.price * removedItem.quantity
-      })
-
-      toast.success("Item removed from cart")
-    } catch (error) {
-      console.error("Error removing item:", error)
-      toast.error("Failed to remove item")
-    }
   }
 
   useEffect(() => {
@@ -201,6 +100,8 @@ function Header() {
       sessionStorage.setItem("user", JSON.stringify(storedUser))
     }
   }
+
+
 
   return (
     <div className="p-2 shadow-sm flex justify-between items-center">
@@ -277,81 +178,57 @@ function Header() {
         </DropdownMenu>
 
         <Sheet>
-          <SheetTrigger>
-            <h2 className="flex gap-2 text-lg relative">
-              <ShoppingBag />
-              {/* ✨ HIGHLIGHT: Always show the cart count, even when it's 0 */}
-              <span className="absolute -top-2 -right-3 bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-full">
-                {cartCount}
-              </span>
-            </h2>
-          </SheetTrigger>
-          <SheetContent className="w-full sm:max-w-md">
-            <SheetHeader>
-              <SheetTitle>Shopping Cart ({cartCount} items)</SheetTitle>
-            </SheetHeader>
+        <SheetTrigger>
+          <h2 className="flex gap-2 text-lg relative">
+            <ShoppingBag />
+            <span className="absolute -top-2 -right-3 bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-full">
+              {cartCount}
+            </span>
+          </h2>
+        </SheetTrigger>
+        <SheetContent className="w-full sm:max-w-md">
+          <SheetHeader>
+            <SheetTitle>My Cart ({cartCount} items)</SheetTitle>
+          </SheetHeader>
 
-            <div className="mt-6 flex flex-col gap-4 h-[calc(100vh-200px)] overflow-y-auto">
-              {isLoading ? (
-                <div className="text-center py-4">Loading cart items...</div>
-              ) : cartItems.length === 0 ? (
-                <div className="text-center py-4">Your cart is empty</div>
-              ) : (
-                cartItems.map((cartItem) => (
-                  <div key={cartItem.id} className="flex gap-4 border-b pb-4">
-                    <div className="relative w-20 h-20 flex-shrink-0">
-                      <Image
-                        src={`/images/product${cartItem.item.itemId}.jpeg`}
-                        alt={cartItem.item.itemName || "Product image"}
-                        fill
-                        sizes="(max-width: 80px) 100vw"
-                        className="rounded-md object-cover"
-                        onError={(e) => {
-                          e.target.src = "/images/default-product.gif"
-                        }}
-                      />
-                    </div>
-
-                    <div className="flex-1">
-                      <h3 className="font-medium">{cartItem.item.itemName}</h3>
-                      {/* ✨ CHANGED: Display individual item total */}
-                      <p className="text-sm text-gray-500">
-                        ₹{cartItem.item.price} × {cartItem.quantity} = ₹
-                        {(cartItem.item.price * cartItem.quantity).toFixed(2)}
-                      </p>
-
-                      <div className="flex items-center gap-2 mt-2">
-                        <Button
-                          variant="outline"
-                          size="icon"
-                          onClick={() => updateItemQuantity(cartItem.id, cartItem.quantity - 1, cartItem.item?.itemId)}
-                        >
-                          <Minus className="h-4 w-4" />
-                        </Button>
-                        <span className="w-8 text-center">{cartItem.quantity}</span>
-                        <Button
-                          variant="outline"
-                          size="icon"
-                          onClick={() => updateItemQuantity(cartItem.id, cartItem.quantity + 1, cartItem.item?.itemId)}
-                        >
-                          <Plus className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="ml-auto text-red-500"
-                          onClick={() => removeItem(cartItem.id)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
+          <div className="mt-6 flex flex-col gap-4 h-[calc(100vh-200px)] overflow-y-auto">
+            {cartItems.length === 0 ? (
+              <div className="text-center py-4">Your cart is empty</div>
+            ) : (
+              cartItems.map((cartItem) => (
+                <div key={cartItem.id} className="flex gap-4 border-b pb-4">
+                  <div className="relative w-20 h-20 flex-shrink-0">
+                    <Image
+                      src={`/images/product${cartItem.item.itemId}.jpeg`}
+                      alt={cartItem.item.itemName || "Product image"}
+                      fill
+                      className="rounded-md object-cover"
+                    />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="font-medium">{cartItem.item.itemName}</h3>
+                    <p className="text-sm text-gray-500">
+                      ₹{cartItem.item.price} × {cartItem.quantity} = ₹
+                      {(cartItem.item.price * cartItem.quantity).toFixed(2)}
+                    </p>
+                    <div className="flex items-center gap-2 mt-2">
+                      <Button variant="outline" size="icon" onClick={() => updateItemQuantity(cartItem.id, cartItem.quantity - 1, cartItem.item.itemId)}>
+                        <Minus className="h-4 w-4" />
+                      </Button>
+                      <span className="w-8 text-center">{cartItem.quantity}</span>
+                      <Button variant="outline" size="icon" onClick={() => updateItemQuantity(cartItem.id, cartItem.quantity + 1, cartItem.item.itemId)}>
+                        <Plus className="h-4 w-4" />
+                      </Button>
+                      <Button variant="ghost" size="icon" className="ml-auto text-red-500" onClick={() => removeItem(cartItem.id)}>
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
                     </div>
                   </div>
-                ))
-              )}
-            </div>
-
-            <SheetFooter className="mt-auto border-t pt-4">
+                </div>
+              ))
+            )}
+          </div>
+          <SheetFooter className="mt-auto border-t pt-4">
               <div className="w-full">
                 <div className="flex justify-between mb-4">
                   <span className="font-medium">Total Amount:</span>
@@ -362,8 +239,8 @@ function Header() {
                 </Button>
               </div>
             </SheetFooter>
-          </SheetContent>
-        </Sheet>
+        </SheetContent>
+      </Sheet>
 
         {user ? (
           <div className="flex items-center gap-3">
