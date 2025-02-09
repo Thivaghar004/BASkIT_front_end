@@ -1,6 +1,7 @@
 "use client"
 import Image from "next/image"
 import { useEffect, useState } from "react"
+import { useRouter } from "next/navigation";
 import { LayoutGrid, Search, ShoppingBag, MapPin, CircleUserRound, Plus, Minus, Trash2 } from "lucide-react"
 import { useLocation } from "../context/LocationContext"
 import { useCategory } from "../context/CategoryContext"
@@ -15,11 +16,12 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetFooter } from "@/components/ui/sheet"
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetFooter, SheetClose } from "@/components/ui/sheet"
 import { toast } from "react-hot-toast"
 import Link from "next/link"
 
 function Header() {
+  const router = useRouter();
   const { locationId, setLocation } = useLocation()
   const { categoryId, setCategory } = useCategory()
   const [categories, setCategories] = useState([])
@@ -234,9 +236,10 @@ function Header() {
                   <span className="font-medium">Total Amount:</span>
                   <span className="font-bold">₹{totalPrice.toFixed(2)}</span>
                 </div>
-                <Button className="w-full" disabled={cartItems.length === 0}>
+                <SheetClose asChild onClick={()=>router.push('/checkout')}><Button className="w-full" disabled={cartItems.length === 0}>
                   Proceed to Buy
                 </Button>
+                </SheetClose>
               </div>
             </SheetFooter>
         </SheetContent>
