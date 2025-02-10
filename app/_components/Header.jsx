@@ -108,7 +108,9 @@ function Header() {
   return (
     <div className="p-2 shadow-sm flex justify-between items-center">
       <div className="flex items-center gap-8">
+      <Link href="/">
         <Image src="/logo.png" alt="Logo" width={50} height={100} />
+      </Link>
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -204,7 +206,7 @@ function Header() {
                       src={`/images/product${cartItem.item.itemId}.jpeg`}
                       alt={cartItem.item.itemName || "Product image"}
                       fill
-                      className="rounded-md object-cover"
+                      className="rounded-md object-contain"
                     />
                   </div>
                   <div className="flex-1">
@@ -236,9 +238,17 @@ function Header() {
                   <span className="font-medium">Total Amount:</span>
                   <span className="font-bold">₹{totalPrice.toFixed(2)}</span>
                 </div>
-                <SheetClose asChild onClick={()=>router.push('/checkout')}><Button className="w-full" disabled={cartItems.length === 0}>
-                  Proceed to Buy
-                </Button>
+                <SheetClose asChild onClick={() => {
+                  if (!user) {
+                    toast.error("Please log in to proceed to checkout");
+                    router.push("/login");
+                    return;
+                  }
+                  router.push('/checkout');
+                }}>
+                  <Button className="w-full" disabled={cartItems.length === 0}>
+                    Proceed to Buy
+                  </Button>
                 </SheetClose>
               </div>
             </SheetFooter>

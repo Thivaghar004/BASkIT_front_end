@@ -1,5 +1,5 @@
 "use client";
-import { createContext, useContext, useState, useEffect } from "react";
+import { createContext, useContext, useState, useEffect, useCallback } from "react";
 import axios from "axios";
 import { toast } from "react-hot-toast";
 
@@ -26,28 +26,18 @@ export function CartProvider({ children }) {
     return () => window.removeEventListener("storage", handleStorageChange);
   }, [user]);
 
-  // ✅ Fetch Cart When User Logs In
-  useEffect(() => {
-    if (user?.userId) {
-      fetchCartDetails(user.userId);
-    }
-  }, [user]);
-
-  async function fetchCartDetails() {
+  const fetchCartDetails = useCallback(async () => {
     const user = typeof window !== "undefined" ? JSON.parse(sessionStorage.getItem("user") || "null") : null;
     if (!user) return;
-  
+
     try {
       const response = await axios.get(`http://localhost:8080/api/carts/user/${user.userId}`);
-  
       if (response.status === 200 && response.data.cartId) {
         const cartData = response.data;
         setCartId(cartData.cartId);
         setCartItems([...cartData.listOfItems]);
         setCartCount(cartData.listOfItems.length);
-        setTotalPrice(
-          cartData.listOfItems.reduce((sum, item) => sum + item.item.price * item.quantity, 0)
-        );
+        setTotalPrice(cartData.listOfItems.reduce((sum, item) => sum + item.item.price * item.quantity, 0));
         sessionStorage.setItem("cartId", cartData.cartId.toString());
       }
     } catch (error) {
@@ -59,7 +49,13 @@ export function CartProvider({ children }) {
         toast.error("Failed to fetch cart items");
       }
     }
-  }
+  }, []);
+
+  useEffect(() => {
+    if (user?.userId) {
+      fetchCartDetails();
+    }
+  }, [fetchCartDetails]);
 
   async function createCart(userId) {
     try {
