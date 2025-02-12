@@ -80,7 +80,7 @@ function Checkout() {
   }
 
   // Calculate delivery charge and tax
-  const deliveryCharge = 19.99 // Example fixed delivery charge
+  const deliveryCharge = 19.99 
   const taxRate = 0.025 // 2.5% tax rate
   const subtotal = totalPrice
   const tax = subtotal * taxRate
