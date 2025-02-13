@@ -88,9 +88,8 @@ const ProductList = () => {
                   <DialogContent>
                     <DialogHeader>
                       <DialogTitle>{product.itemName}</DialogTitle>
-                      <DialogDescription>
+                      <DialogDescription></DialogDescription>
                         <ProductItemDetails product={product}/>
-                      </DialogDescription>
                     </DialogHeader>
                   </DialogContent>
                   </Dialog>

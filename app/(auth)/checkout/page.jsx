@@ -5,11 +5,12 @@ import { toast } from "react-hot-toast"
 import { Button } from "@/components/ui/button"
 import { ArrowBigRight } from "lucide-react"
 import axios from "axios"
-import { useCart } from "@/app/context/CartContext" // Import the useCart hook
+import { useCart } from "@/app/context/CartContext"
 
 function Checkout() {
   const router = useRouter()
   const [user, setUser] = useState(null)
+  const [paymentMethod, setPaymentMethod] = useState("cod")
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -18,7 +19,7 @@ function Checkout() {
     address: "",
   })
   const [modifiedFields, setModifiedFields] = useState({})
-  const { cartItems, totalPrice, fetchCartDetails } = useCart() // Use the cart context
+  const { cartItems, totalPrice, fetchCartDetails, cartId } = useCart() // Use the cart context
 
   useEffect(() => {
     const storedUser = sessionStorage.getItem("user")
@@ -80,11 +81,57 @@ function Checkout() {
   }
 
   // Calculate delivery charge and tax
-  const deliveryCharge = 19.99 
+  const deliveryCharge = 19.99
   const taxRate = 0.025 // 2.5% tax rate
   const subtotal = totalPrice
   const tax = subtotal * taxRate
   const total = subtotal + deliveryCharge + tax
+
+  async function placeOrder() {
+    try {
+      const orderData = {
+        userId: user.userId,
+        cartId: cartId,
+        paymentMethod: paymentMethod,
+        name: formData.name,
+        phoneNumber: formData.phoneNumber,
+        address: formData.address,
+        totalAmount: total,
+      }
+
+      console.log("📦 Sending Order Data:", orderData)
+
+      const response = await axios.post("http://localhost:8080/api/orders", orderData)
+
+      if (response.status === 201) {
+        toast.success("Order placed successfully!")
+
+        // Clear the cart and create a new one
+        await axios.delete(`http://localhost:8080/api/carts/${cartId}`)
+        sessionStorage.removeItem("cartId")
+        await fetchCartDetails()
+
+        // Redirect to order success page
+        router.push("/order-success")
+      } else {
+        toast.error("Failed to place order. Please try again.")
+      }
+    } catch (error) {
+      console.error("❌ Error placing order:", error.response?.data || error.message)
+      if (error.response?.status === 400) {
+        toast.error("Invalid order data. Please check your information and try again.")
+      } else if (error.response?.status === 500) {
+        toast.error("Server error. Please try again later.")
+      } else {
+        toast.error("An unexpected error occurred. Please try again.")
+      }
+    }
+  }
+
+  function proceedToGateway() {
+    toast.success("Redirecting to PayPal...")
+    router.push("/payment-gateway")
+  }
 
   if (!user) return null
 
@@ -173,9 +220,57 @@ function Checkout() {
             <h2 className="font-bold flex justify-between">
               Total: <span>₹{total.toFixed(2)}</span>
             </h2>
-            <Button className="w-full bg-green-500 text-white flex justify-center items-center gap-2">
-              Proceed to Payment <ArrowBigRight />
-            </Button>
+            <div className="mt-1">
+              <h3 className="font-bold text-lg mb-2">Select Payment Method</h3>
+              <div className="flex gap-6">
+                {/* Cash on Delivery */}
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="paymentMethod"
+                    value="cod"
+                    checked={paymentMethod === "cod"}
+                    onChange={() => setPaymentMethod("cod")}
+                    className="peer hidden"
+                  />
+                  <div className="w-5 h-5 border-2 border-gray-400 rounded-full flex items-center justify-center peer-checked:border-green-500">
+                    <div className="w-2.5 h-2.5 bg-green-500 rounded-full hidden peer-checked:block"></div>
+                  </div>
+                  Cash on Delivery
+                </label>
+
+                {/* PayPal */}
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="paymentMethod"
+                    value="paypal"
+                    checked={paymentMethod === "paypal"}
+                    onChange={() => setPaymentMethod("paypal")}
+                    className="peer hidden"
+                  />
+                  <div className="w-5 h-5 border-2 border-gray-400 rounded-full flex items-center justify-center peer-checked:border-green-500">
+                    <div className="w-2.5 h-2.5 bg-green-500 rounded-full hidden peer-checked:block"></div>
+                  </div>
+                  PayPal
+                </label>
+              </div>
+            </div>
+            {paymentMethod === "cod" ? (
+              <Button
+                className="w-full bg-green-500 text-white flex justify-center items-center gap-2"
+                onClick={placeOrder}
+              >
+                Place Order <ArrowBigRight />
+              </Button>
+            ) : (
+              <Button
+                className="w-full bg-green-500 text-white flex justify-center items-center gap-2"
+                onClick={proceedToGateway}
+              >
+                Proceed to Gateway <ArrowBigRight />
+              </Button>
+            )}
           </div>
         </div>
       </div>
