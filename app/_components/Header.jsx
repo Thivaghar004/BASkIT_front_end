@@ -266,7 +266,7 @@ function Header() {
                   <p className="font-semibold text-green-600">Welcome, {user.name}!</p>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem>Profile</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => router.push("/profile")}>Profile</DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
             <Button variant="outline" onClick={handleLogout}>

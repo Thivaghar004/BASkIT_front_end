@@ -97,36 +97,52 @@ function Checkout() {
         phoneNumber: formData.phoneNumber,
         address: formData.address,
         totalAmount: total,
-      }
-
-      console.log("📦 Sending Order Data:", orderData)
-
-      const response = await axios.post("http://localhost:8080/api/orders", orderData)
-
+      };
+  
+      console.log("📦 Sending Order Data:", orderData);
+  
+      const response = await axios.post("http://localhost:8080/api/orders", orderData);
+  
       if (response.status === 201) {
-        toast.success("Order placed successfully!")
+        toast.success("Order placed successfully!");
 
-        // Clear the cart and create a new one
-        await axios.delete(`http://localhost:8080/api/carts/${cartId}`)
-        sessionStorage.removeItem("cartId")
-        await fetchCartDetails()
-
+        sessionStorage.setItem("lastOrderDetails", JSON.stringify({
+          orderId: response.data.orderId,
+          totalAmount: total,
+          paymentMethod: formData.paymentMethod,
+          name: formData.name,
+          address: formData.address,
+          phoneNumber: formData.phoneNumber,
+        }));
+  
+        // Create a new cart for the user after placing the order
+        const newCartResponse = await axios.post("http://localhost:8080/api/carts", { userId: user.userId });
+        if (newCartResponse.status === 201) {
+          const newCartId = newCartResponse.data.cartId;
+          sessionStorage.setItem("cartId", newCartId);
+          await fetchCartDetails(); // Fetch updated cart details
+          console.log("New Cart Details:", newCartResponse.data);
+        } else {
+          console.error("Failed to create a new cart");
+        }
+  
         // Redirect to order success page
-        router.push("/order-success")
+        router.push("/order-success");
       } else {
-        toast.error("Failed to place order. Please try again.")
+        toast.error("Failed to place order. Please try again.");
       }
     } catch (error) {
-      console.error("❌ Error placing order:", error.response?.data || error.message)
+      console.error("❌ Error placing order:", error.response?.data || error.message);
       if (error.response?.status === 400) {
-        toast.error("Invalid order data. Please check your information and try again.")
+        toast.error("Invalid order data. Please check your information and try again.");
       } else if (error.response?.status === 500) {
-        toast.error("Server error. Please try again later.")
+        toast.error("Server error. Please try again later.");
       } else {
-        toast.error("An unexpected error occurred. Please try again.")
+        toast.error("An unexpected error occurred. Please try again.");
       }
     }
   }
+  
 
   function proceedToGateway() {
     toast.success("Redirecting to PayPal...")

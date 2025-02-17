@@ -57,6 +57,7 @@ export function CartProvider({ children }) {
     }
   }, [fetchCartDetails]);
 
+  // Create a new cart if none exists
   async function createCart(userId) {
     try {
       const response = await axios.post("http://localhost:8080/api/carts", {
@@ -65,8 +66,10 @@ export function CartProvider({ children }) {
       });
   
       if (response.status === 200 || response.status === 201) {
-        setCartId(response.data.cartId);
-        sessionStorage.setItem("cartId", response.data.cartId.toString());
+        const newCartId = response.data.cartId;
+        setCartId(newCartId); // Set the new cart ID
+        sessionStorage.setItem("cartId", newCartId.toString()); // Store it in sessionStorage
+        setCartItems([]); // Make sure the cart starts empty
         toast.success("New cart created! 🎉");
         await fetchCartDetails(); // Fetch cart details after creating
       }
@@ -76,6 +79,7 @@ export function CartProvider({ children }) {
     }
   }
 
+  // Add an item to the cart
   async function addItemToCart(product, quantity) {
     const user = typeof window !== "undefined" ? JSON.parse(sessionStorage.getItem("user") || "null") : null;
     if (!user) {
@@ -103,6 +107,7 @@ export function CartProvider({ children }) {
     }
   }
 
+  // Update quantity of an item in the cart
   async function updateItemQuantity(listItemId, newQuantity, itemId) {
     try {
       if (newQuantity < 1) {
@@ -129,6 +134,7 @@ export function CartProvider({ children }) {
     }
   }
 
+  // Remove an item from the cart
   async function removeItem(listItemId) {
     try {
       await axios.delete(`http://localhost:8080/api/list-of-items/${listItemId}`);
